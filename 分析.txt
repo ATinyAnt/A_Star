@@ -1,0 +1,44 @@
+-- a_star4.html --
+
+66 36 平均200毫秒
+优化
+将_G 设置为0, 平均100毫秒
+
+之后涌现了很多预处理算法（ALT，CH，HL等等），在线查询效率是A*算法的数千甚至上万倍。
+
+全局变量：
+	map.openArea = [];	OPEN表
+    map.closeArea = {};	CLOSE表
+	startNode 	起始节点
+	endNode 	目标节点
+
+1、
+	init
+	--->_createMapData 
+		:正如原代码所描述，是创建网格。
+	
+		--->mapNode.isRoadBlock = true;
+    	--->map.closeArea[mapNode.id] = mapNode;
+    		:应该是将mapNode设置路障，再将其放到CLOSE表
+2、
+    getUI
+	--->table.push('<td id="'+ data[y][x].id +'" class="'+ (data[y][x].isRoadBlock === true ? 'map_close' : 'map_open') +'"></td>')
+		:这段代码印证了（1）的某些论述
+		
+3、
+	mapUI.onclick
+	
+	--->getPath
+		
+		--->map.getAroundNode(map.startNode);
+			:获得map.startNode周围节点
+			
+			--->_fObj = map.getF(node, mapNode);
+			
+			--->map.openArea.push(mapNode);
+				：将找到符合条件的节点放到OPEN表
+		--->
+    	
+
+◆
+★
