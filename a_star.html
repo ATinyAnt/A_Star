@@ -1,0 +1,240 @@
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html" charset="utf-8">
+    <title>A* javascript</title>
+    <style type="text/css">
+        .map{ background-color: #CCCCCC; }
+        .map td{ width : 20px; height: 20px; }
+        .map_close{ background-color: #000000; }
+        .map_open{ background-color: #FFFFFF; }
+    </style>
+</head>
+<body>
+</body>
+</html>
+<script type="text/javascript">
+
+// 计时器
+var Timer = function (){
+	this.startTime = + new Date;
+};
+
+Timer.prototype.stop = function(){
+	return + new Date - this.startTime;
+};
+
+var map = {
+	gridWidth : 46,
+    gridHeight : 120,
+    isRun : false,
+    beginNode : null,
+    endNode : null,
+    openArea : {},
+    closeArea : {},
+    
+    _coordToID : function(x, y){
+    	return x + '_' + y;
+    },
+    
+    _IDToCoord : function(id){
+    	return id.split("_");
+    },
+    
+    Node : function(x, y) {
+        this.x = x;
+        this.y = y;
+        this.id = map._coordToID(x, y);
+        this.isRoadBlock = false;
+        this.front = null;
+        this.obj = null;
+    },
+    
+    init : function(blockFactor){
+        map.data = [];
+        for (var x = 0, _arr; x < map.gridWidth; x++) 
+        {
+            _arr = [];
+            for (var y = 0, mapNode; y < map.gridHeight; y++) 
+            {
+                mapNode = new map.Node(x, y);
+                
+                if (Math.random() < blockFactor) 
+                {
+                    mapNode.isRoadBlock = true;
+                    map.closeArea[mapNode.id] = mapNode;
+                };
+            
+                _arr.push(mapNode);
+            };
+            map.data.push(_arr);
+        };
+    },
+    
+    search : function(node){
+    	while(!map.closeArea[node.id]){
+            var _fMinNode = map._getFMin();
+            if (!_fMinNode) break;
+            map.searchAround(_fMinNode);
+            map.search(node);
+        }
+    	
+    	if (map.closeArea[node.id]){
+			map._drawRoad(node);
+		}
+    },
+    
+    searchAround : function(node){
+        var nodeX;
+        var nodeY;
+
+        for (var x = -1; x <= 1; x++) 
+        {
+            nodeX = node.x + x;
+            for (var y = -1, mapNode, _obj, tmpNode; y <= 1; y++) 
+            {
+                nodeY = node.y + y;
+                //剔除本身
+                if (x === 0 && y === 0) continue;
+                if (nodeX >= 0 && nodeY >= 0 && nodeX < map.gridWidth && nodeY < map.gridHeight) 
+                {
+                    mapNode = map.data[nodeX][nodeY];
+
+                    if (!map.closeArea[mapNode.id]) 
+                    {
+                        _obj = map.getFGH(node, mapNode);
+                        // 如果周围节点已在开启区域的 根据当前节点 获取新的G值  与当前点的进行比较 如果小于以前的G值 则指定当前节点为其父节点
+                        tmpNode =  map._isOpenAreaExitNode(mapNode);
+                        if (tmpNode) 
+                        {
+                            if (tmpNode.obj.G <= _obj.G) continue;
+                        };
+                        mapNode.obj = _obj;
+                        mapNode.front = node;
+                        map.openArea[mapNode.id] = mapNode;
+                    };
+                };
+            };
+        };
+        
+        if (map.openArea.length == 0){
+        	return;
+        }
+        
+       map.search(map.endNode);
+    },
+    
+    getFGH : function(centerNode, roundNode){
+    	var energyW = Math.abs(map.endNode.x - roundNode.x);
+        var energyH = Math.abs(map.endNode.y - roundNode.y);
+        var _H = energyW + energyH;
+        var _G = 1;
+        if (centerNode.x != roundNode.x && centerNode.y != roundNode.y){
+        	_G = 1.4;	
+        }
+        
+        if (centerNode.obj){
+        	_G = centerNode.obj.G + _G;
+        }
+        
+    	return { F : _G + _H, H : _H, G : _G };
+    },
+    
+    /**  从开启列表从寻找F点最小的点 从开启列表移除 移入关闭列表 */
+    _getFMin : function() 
+    {
+		if (map.openArea.length == 0) return null;
+       	
+       	var minF = 99999999;
+       	var index;
+		for (var i in map.openArea){
+       		if (map.openArea[i].obj.F < minF){
+       			index = i;
+       		}
+       	}
+        
+        map.closeArea[index] = map.openArea[index];
+        delete map.openArea[index];
+        return map.closeArea[index];
+    },
+    
+    getNode : function(id){
+    	var coord = map._IDToCoord(id);
+    	return map.data[coord[0]][coord[1]];
+    },
+    
+    /**  检测当前开启列表中是否含有传进来的Node 存在则从开启列表中选中将其返回*/
+    _isOpenAreaExitNode : function(node) 
+    {
+    	return map.openArea[node.id];
+    },
+    
+     /**  绘制路线 */
+    _drawRoad : function(node) {
+        document.getElementById(node.id).style.background = '#EFA626';
+        if (node.front !== map.beginNode){
+        	map._drawRoad(node.front);
+        }
+    },
+    
+    createUI : function(){
+    	var table = [];
+        var data = map.data;
+
+        table.push('<table cellpadding="0" cellspacing="1" bgcolor="0" class="map">');
+        table.push('<tbody>');
+        for (var y = 0, yl = data.length; y < yl; y++) 
+        {
+            table.push('<tr>');
+            for (var x = 0, xl = data[y].length; x < xl; x++) 
+            {
+                table.push('<td id="'+ data[y][x].id +'" class="'+ (data[y][x].isRoadBlock === true ? 'map_close' : 'map_open') +'"></td>')
+            }
+            table.push('</tr>');
+        };
+        table.push('</tbody>');
+        table.push('</table>');
+
+        var container = document.createElement('div');
+        container.innerHTML = table.join('');
+
+		document.getElementsByTagName('body')[0].appendChild(container);
+		
+	    container.onclick = function(event) 
+	    {
+	        event = event || window.event;
+	
+	        var target = event.target || event.srcElement;
+	
+	        if (map.isRun) return;
+	        if (target.nodeName !== "TD") return;
+	
+	        var node = map.getNode(target.id);
+	        if (node.isRoadBlock) return;
+	        if (!node) return;
+	        if (map.beginNode) 
+	        {
+	       		map.endNode = node;
+	       		var time = new Timer;
+	       		map.searchAround(map.beginNode);
+	       		document.title = '[' + time.stop() + '毫秒] ' + document.title;
+	       		map.isRun = true;
+	            target.style.backgroundColor = 'red';
+	       	} 
+	       	else
+	       	{
+	       		map.beginNode = node;
+	            target.style.backgroundColor = 'green';
+	       	};
+	    };
+    },
+};
+
+(function(){
+	map.init(0.3);
+	map.createUI();
+})();
+
+</script>

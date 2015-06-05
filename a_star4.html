@@ -17,7 +17,7 @@
 <script type="text/javascript">
 var map = {
     gridWidth : 40,
-    girdHeight : 120,
+    gridHeight : 120,
     roadBlock : 0.1,
     init : function() 
     {
@@ -34,7 +34,7 @@ var map = {
         var cache = map.cache;
 
         map.data = [];
-        for (var y = 0, _arr; y < map.girdHeight; y++) 
+        for (var y = 0, _arr; y < map.gridHeight; y++) 
         {
             _arr = [];
             for (var x = 0, mapNode; x < map.gridWidth; x++) 
@@ -132,7 +132,7 @@ var map = {
     /**  获取当前父节点周围的点  */
     getAroundNode : function(node) 
     {
-        var maxHeight = map.girdHeight;
+        var maxHeight = map.gridHeight;
         var maxWidth = map.gridWidth;
         var nodeX;
         var nodeY;
