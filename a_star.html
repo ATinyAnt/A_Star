@@ -27,13 +27,13 @@ Timer.prototype.stop = function(){
 };
 
 var map = {
-	gridWidth : 46,
-    gridHeight : 120,
+	gridWidth : 36,
+    gridHeight : 60,
     isRun : false,
     beginNode : null,
     endNode : null,
-    openArea : {},
-    closeArea : {},
+    openTable : [],
+    closedTable : {},
     
     _coordToID : function(x, y){
     	return x + '_' + y;
@@ -64,7 +64,7 @@ var map = {
                 if (Math.random() < blockFactor) 
                 {
                     mapNode.isRoadBlock = true;
-                    map.closeArea[mapNode.id] = mapNode;
+                    map.closedTable[mapNode.id] = mapNode;
                 };
             
                 _arr.push(mapNode);
@@ -73,17 +73,24 @@ var map = {
         };
     },
     
-    search : function(node){
-    	while(!map.closeArea[node.id]){
-            var _fMinNode = map._getFMin();
-            if (!_fMinNode) break;
+    search : function(){
+    	while(1){
+    		if (map.openTable.length == 0){
+	    		break;
+	    	}
+    		/*
+	    	this.openTable.sort(function(objF, objN) {
+            	return objF.obj.F - objN.obj.F;
+        	});
+        	*/
+            var _fMinNode = map.openTable.shift();     
             map.searchAround(_fMinNode);
-            map.search(node);
+            map.closedTable[_fMinNode.id] = _fMinNode;
+           
+            if (map.endNode == _fMinNode){
+            	break;
+            }
         }
-    	
-    	if (map.closeArea[node.id]){
-			map._drawRoad(node);
-		}
     },
     
     searchAround : function(node){
@@ -102,28 +109,37 @@ var map = {
                 {
                     mapNode = map.data[nodeX][nodeY];
 
-                    if (!map.closeArea[mapNode.id]) 
+                    if (!map.closedTable[mapNode.id]) 
                     {
                         _obj = map.getFGH(node, mapNode);
                         // 如果周围节点已在开启区域的 根据当前节点 获取新的G值  与当前点的进行比较 如果小于以前的G值 则指定当前节点为其父节点
-                        tmpNode =  map._isOpenAreaExitNode(mapNode);
+                        tmpNode =  map.getOpenTableExitNode(mapNode);
                         if (tmpNode) 
                         {
                             if (tmpNode.obj.G <= _obj.G) continue;
                         };
                         mapNode.obj = _obj;
                         mapNode.front = node;
-                        map.openArea[mapNode.id] = mapNode;
+                        map.insertOpenTable(mapNode);
+                        //map.openTable.push(mapNode);
                     };
                 };
             };
         };
-        
-        if (map.openArea.length == 0){
-        	return;
-        }
-        
-       map.search(map.endNode);
+    },
+    
+    insertOpenTable : function(node){
+    	map.openTable[map.openTable.length] = node;
+    	for (var i = map.openTable.length - 1, tempNode; i > 0; i--){
+			if (map.openTable[i].obj.F < map.openTable[i - 1].obj.F){
+				tempNode = map.openTable[i];
+				map.openTable[i] = map.openTable[i - 1];
+				map.openTable[i - 1] = tempNode;
+			}
+			else{
+				break;
+			}
+    	}
     },
     
     getFGH : function(centerNode, roundNode){
@@ -135,29 +151,9 @@ var map = {
         	_G = 1.4;	
         }
         
-        if (centerNode.obj){
-        	_G = centerNode.obj.G + _G;
-        }
+       _G = centerNode.obj.G + _G;
         
     	return { F : _G + _H, H : _H, G : _G };
-    },
-    
-    /**  从开启列表从寻找F点最小的点 从开启列表移除 移入关闭列表 */
-    _getFMin : function() 
-    {
-		if (map.openArea.length == 0) return null;
-       	
-       	var minF = 99999999;
-       	var index;
-		for (var i in map.openArea){
-       		if (map.openArea[i].obj.F < minF){
-       			index = i;
-       		}
-       	}
-        
-        map.closeArea[index] = map.openArea[index];
-        delete map.openArea[index];
-        return map.closeArea[index];
     },
     
     getNode : function(id){
@@ -165,18 +161,51 @@ var map = {
     	return map.data[coord[0]][coord[1]];
     },
     
+    setBeginNode : function(){
+    	var energyW = Math.abs(map.endNode.x - map.beginNode.x);
+        var energyH = Math.abs(map.endNode.y - map.beginNode.y);
+        var _H = energyW + energyH;
+        var _G = 0;
+        var _F = _H;
+    	map.beginNode.obj = {F : _F, H : _H, G : _G};
+    	
+    	map.openTable.push(map.beginNode);
+    },
+    
     /**  检测当前开启列表中是否含有传进来的Node 存在则从开启列表中选中将其返回*/
-    _isOpenAreaExitNode : function(node) 
-    {
-    	return map.openArea[node.id];
+    getOpenTableExitNode : function(node) {
+    	var openTable = map.openTable;
+        for (var i = 0, l = openTable.length; i < l; i++) {
+            if (openTable[i].id === node.id) return openTable[i];
+        };
+
+        return null;
     },
     
      /**  绘制路线 */
-    _drawRoad : function(node) {
-        document.getElementById(node.id).style.background = '#EFA626';
-        if (node.front !== map.beginNode){
-        	map._drawRoad(node.front);
-        }
+    drawRoad : function(node) {
+    	var tempNode = node;
+    	while (tempNode !== map.beginNode){
+    		document.getElementById(tempNode.id).style.background = '#EFA626';
+    		
+    		tempNode = tempNode.front;
+    	}
+    	
+    	document.getElementById(node.id).style.background = 'red';
+    },
+    
+    showAllClosedNode : function(){
+    	for (var id in map.closedTable){
+    		if (map.closedTable[id].obj){
+    			document.getElementById(id).innerHTML="C:" + map.closedTable[id].obj.F.toFixed(1) + " " + map.closedTable[id].obj.G.toFixed(1) + " " + map.closedTable[id].obj.H.toString();
+    		}    		
+    	}
+    },
+    
+    showLeftOpenNode : function(){
+    	for (var i = 0; i < map.openTable.length; i++) {
+            document.getElementById(map.openTable[i].id).innerHTML="O:" + map.openTable[i].obj.F.toFixed(1) + " " + map.openTable[i].obj.G.toFixed(1) + " " + map.openTable[i].obj.H;
+        };
     },
     
     createUI : function(){
@@ -218,10 +247,13 @@ var map = {
 	        {
 	       		map.endNode = node;
 	       		var time = new Timer;
-	       		map.searchAround(map.beginNode);
+	       		map.setBeginNode();
+	       		map.search();
 	       		document.title = '[' + time.stop() + '毫秒] ' + document.title;
+	       		map.drawRoad(map.endNode);
+	       		map.showAllClosedNode();
+	       		map.showLeftOpenNode();
 	       		map.isRun = true;
-	            target.style.backgroundColor = 'red';
 	       	} 
 	       	else
 	       	{
