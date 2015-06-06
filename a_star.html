@@ -13,11 +13,24 @@
     </style>
 </head>
 <body>
+	<input id='b_set' type='button' onclick='setBlock()' value='设置阻挡'/>
 </body>
 </html>
 <script type="text/javascript">
 
 var globalIndex = 1;
+var isSetBlock = false;
+var setBlock = function(){
+	isSetBlock = !isSetBlock;
+	if (isSetBlock){
+		document.getElementById('b_set').value = '运行';
+	}
+	else{
+		document.getElementById('b_set').value = '设置阻挡';
+	}
+}
+
+
 
 // 计时器
 var Timer = function (){
@@ -123,11 +136,11 @@ var map = {
 						{
 							break;
 						}
-						// 如果周围节点已在开启区域的 根据当前节点 获取新的G值  与当前点的进行比较 如果小于以前的G值 则指定当前节点为其父节点
+						
                         tmpNode =  map.getOpenTableExitNode(mapNode);
                         if (tmpNode) 
                         {
-                            if (tmpNode.obj.G <= _obj.G) continue;
+                            if (tmpNode.obj.F <= _obj.F) continue;
                         };
                         mapNode.obj = _obj;
                         mapNode.front = node;
@@ -159,7 +172,7 @@ var map = {
         var _H = energyW + energyH;
         var _G = 1;
         if (centerNode.x != roundNode.x && centerNode.y != roundNode.y){
-        	_G = 1.6;	
+        	_G = 1.4;	
         }
         
        _G = centerNode.obj.G + _G;
@@ -250,8 +263,21 @@ var map = {
 	
 	        if (map.isRun) return;
 	        if (target.nodeName !== "TD") return;
-	
+	        
 	        var node = map.getNode(target.id);
+	        
+	        if (isSetBlock){
+	        	if (node.isRoadBlock){
+	        		node.isRoadBlock = false;
+	        		target.style.backgroundColor = 'rgb(255, 255, 255)';
+	        	}
+	        	else{
+	        		node.isRoadBlock = true;
+	        		target.style.backgroundColor = 'rgb(0, 0, 0)';
+	        	}
+	        	return;
+	        }
+		        
 	        if (node.isRoadBlock) return;
 	        if (!node) return;
 	        if (map.beginNode) 
@@ -276,7 +302,7 @@ var map = {
 };
 
 (function(){
-	map.init(0.3);
+	map.init(0);
 	map.createUI();
 })();
 
