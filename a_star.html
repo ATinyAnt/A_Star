@@ -17,6 +17,8 @@
 </html>
 <script type="text/javascript">
 
+var globalIndex = 1;
+
 // 计时器
 var Timer = function (){
 	this.startTime = + new Date;
@@ -50,6 +52,7 @@ var map = {
         this.isRoadBlock = false;
         this.front = null;
         this.obj = null;
+        this.index = 0;
     },
     
     init : function(blockFactor){
@@ -85,6 +88,8 @@ var map = {
         	*/
             var _fMinNode = map.openTable.shift();     
             map.searchAround(_fMinNode);
+            _fMinNode.index = globalIndex;
+            globalIndex++;
             map.closedTable[_fMinNode.id] = _fMinNode;
            
             if (map.endNode == _fMinNode){
@@ -108,11 +113,17 @@ var map = {
                 if (nodeX >= 0 && nodeY >= 0 && nodeX < map.gridWidth && nodeY < map.gridHeight) 
                 {
                     mapNode = map.data[nodeX][nodeY];
-
-                    if (!map.closedTable[mapNode.id]) 
-                    {
-                        _obj = map.getFGH(node, mapNode);
-                        // 如果周围节点已在开启区域的 根据当前节点 获取新的G值  与当前点的进行比较 如果小于以前的G值 则指定当前节点为其父节点
+                    if (mapNode.isRoadBlock){
+                    	continue;
+                    }
+					_obj = map.getFGH(node, mapNode);
+					do
+					{
+						if (map.closedTable[mapNode.id] && _obj.F >= map.closedTable[mapNode.id].obj.F)
+						{
+							break;
+						}
+						// 如果周围节点已在开启区域的 根据当前节点 获取新的G值  与当前点的进行比较 如果小于以前的G值 则指定当前节点为其父节点
                         tmpNode =  map.getOpenTableExitNode(mapNode);
                         if (tmpNode) 
                         {
@@ -122,7 +133,7 @@ var map = {
                         mapNode.front = node;
                         map.insertOpenTable(mapNode);
                         //map.openTable.push(mapNode);
-                    };
+					}while(0)
                 };
             };
         };
@@ -148,7 +159,7 @@ var map = {
         var _H = energyW + energyH;
         var _G = 1;
         if (centerNode.x != roundNode.x && centerNode.y != roundNode.y){
-        	_G = 1.4;	
+        	_G = 1.6;	
         }
         
        _G = centerNode.obj.G + _G;
@@ -197,7 +208,7 @@ var map = {
     showAllClosedNode : function(){
     	for (var id in map.closedTable){
     		if (map.closedTable[id].obj){
-    			document.getElementById(id).innerHTML="C:" + map.closedTable[id].obj.F.toFixed(1) + " " + map.closedTable[id].obj.G.toFixed(1) + " " + map.closedTable[id].obj.H.toString();
+    			document.getElementById(id).innerHTML="C:" + map.closedTable[id].obj.F.toFixed(1) + " " + map.closedTable[id].obj.G.toFixed(1) + " " + map.closedTable[id].obj.H.toString() + " " + map.closedTable[id].index;
     		}    		
     	}
     },
@@ -251,8 +262,8 @@ var map = {
 	       		map.search();
 	       		document.title = '[' + time.stop() + '毫秒] ' + document.title;
 	       		map.drawRoad(map.endNode);
-	       		map.showAllClosedNode();
-	       		map.showLeftOpenNode();
+	       		//map.showAllClosedNode();
+	       		//map.showLeftOpenNode();
 	       		map.isRun = true;
 	       	} 
 	       	else
