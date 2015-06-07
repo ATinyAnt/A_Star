@@ -14,12 +14,16 @@
 </head>
 <body>
 	<input id='b_set' type='button' onclick='setBlock()' value='设置阻挡'/>
+	<input id='b_closed' type='button' onclick='showClosed()' value='closed'/>
+	<input id='b_open' type='button' onclick='showOpen()' value='open'/>
 </body>
 </html>
 <script type="text/javascript">
 
 var globalIndex = 1;
 var isSetBlock = false;
+var closedTable = [];
+
 var setBlock = function(){
 	isSetBlock = !isSetBlock;
 	if (isSetBlock){
@@ -30,7 +34,17 @@ var setBlock = function(){
 	}
 }
 
+var showClosed = function(){
+	for (var i = 0; i < closedTable.length; i++){
+		if (closedTable[i].obj){
+			document.getElementById(closedTable[i].id).innerHTML="C:" + closedTable[i].obj.F.toFixed(1) + " " + closedTable[i].obj.G.toFixed(1) + " " + closedTable[i].obj.H.toString() + " " + closedTable[i].index;
+		}    		
+	}
+}
 
+var showOpen = function(){
+	map.showLeftOpenNode();
+}
 
 // 计时器
 var Timer = function (){
@@ -43,12 +57,11 @@ Timer.prototype.stop = function(){
 
 var map = {
 	gridWidth : 36,
-    gridHeight : 60,
+    gridHeight : 70,
     isRun : false,
     beginNode : null,
     endNode : null,
     openTable : [],
-    closedTable : {},
     
     _coordToID : function(x, y){
     	return x + '_' + y;
@@ -65,7 +78,8 @@ var map = {
         this.isRoadBlock = false;
         this.front = null;
         this.obj = null;
-        this.index = 0;
+        this.index = 0;		// 扩展索引，用于调试
+        this.place = 0;		// 1:在open表 2:在closed表
     },
     
     init : function(blockFactor){
@@ -80,7 +94,6 @@ var map = {
                 if (Math.random() < blockFactor) 
                 {
                     mapNode.isRoadBlock = true;
-                    map.closedTable[mapNode.id] = mapNode;
                 };
             
                 _arr.push(mapNode);
@@ -94,17 +107,16 @@ var map = {
     		if (map.openTable.length == 0){
 	    		break;
 	    	}
-    		/*
-	    	this.openTable.sort(function(objF, objN) {
-            	return objF.obj.F - objN.obj.F;
-        	});
-        	*/
-            var _fMinNode = map.openTable.shift();     
+            var _fMinNode = map.openTable.shift();
+            if (_fMinNode.place == 2){
+            	continue;
+            }
+            
             map.searchAround(_fMinNode);
             _fMinNode.index = globalIndex;
             globalIndex++;
-            map.closedTable[_fMinNode.id] = _fMinNode;
-           
+            _fMinNode.place = 2;
+			closedTable.push(_fMinNode);
             if (map.endNode == _fMinNode){
             	break;
             }
@@ -132,20 +144,22 @@ var map = {
 					_obj = map.getFGH(node, mapNode);
 					do
 					{
-						if (map.closedTable[mapNode.id] && _obj.F >= map.closedTable[mapNode.id].obj.F)
-						{
-							break;
+						if (mapNode.place == 2){
+							if (_obj.G >= mapNode.obj.G){
+								break;
+							}
 						}
-						
-                        tmpNode =  map.getOpenTableExitNode(mapNode);
-                        if (tmpNode) 
-                        {
-                            if (tmpNode.obj.F <= _obj.F) continue;
-                        };
+						else if (mapNode.place == 1){
+							// 单调限制
+							if (mapNode.obj.G <= _obj.G){
+								continue;
+							}
+						}
+                        
                         mapNode.obj = _obj;
                         mapNode.front = node;
+                        mapNode.place = 1;
                         map.insertOpenTable(mapNode);
-                        //map.openTable.push(mapNode);
 					}while(0)
                 };
             };
@@ -218,14 +232,6 @@ var map = {
     	document.getElementById(node.id).style.background = 'red';
     },
     
-    showAllClosedNode : function(){
-    	for (var id in map.closedTable){
-    		if (map.closedTable[id].obj){
-    			document.getElementById(id).innerHTML="C:" + map.closedTable[id].obj.F.toFixed(1) + " " + map.closedTable[id].obj.G.toFixed(1) + " " + map.closedTable[id].obj.H.toString() + " " + map.closedTable[id].index;
-    		}    		
-    	}
-    },
-    
     showLeftOpenNode : function(){
     	for (var i = 0; i < map.openTable.length; i++) {
             document.getElementById(map.openTable[i].id).innerHTML="O:" + map.openTable[i].obj.F.toFixed(1) + " " + map.openTable[i].obj.G.toFixed(1) + " " + map.openTable[i].obj.H;
@@ -288,8 +294,6 @@ var map = {
 	       		map.search();
 	       		document.title = '[' + time.stop() + '毫秒] ' + document.title;
 	       		map.drawRoad(map.endNode);
-	       		//map.showAllClosedNode();
-	       		//map.showLeftOpenNode();
 	       		map.isRun = true;
 	       	} 
 	       	else
@@ -302,7 +306,7 @@ var map = {
 };
 
 (function(){
-	map.init(0);
+	map.init(0.3);
 	map.createUI();
 })();
 
